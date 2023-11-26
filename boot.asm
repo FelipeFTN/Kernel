@@ -1,9 +1,19 @@
 ;   Set start address point
-ORG 0x7C00
+ORG 0
 BITS 16
+
+jmp 0x7C0:start
 
 ; Output to the screen (video services 'ah' register)
 start:
+  cli ; Clear Interrupts
+  mov ax, 0x7C0
+  mov ds, ax
+  mov es, ax
+  mov ax, 0x00
+  mov ss, ax
+  mov sp, 0x7C00
+  sti ; Enables Interrupts
   mov si, message
   call print
   jmp $
