@@ -2,10 +2,18 @@
 ORG 0
 BITS 16
 
-jmp 0x7C0:start
+; Avoid BIOS overwitten stuff
+_start:
+  jmp short start
+  nop
+
+times 33 db 0
 
 ; Output to the screen (video services 'ah' register)
 start:
+  jmp 0x7C0:process
+
+process:
   cli ; Clear Interrupts
   mov ax, 0x7C0
   mov ds, ax
