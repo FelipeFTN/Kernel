@@ -2,6 +2,10 @@
 
 all: bootloader
 
+build:
+	mkdir -p ./bin
+	nasm -f bin ./src/boot/boot.asm -o ./bin/boot.bin
+
 # Compile Bootloader
 bootloader:
 	mkdir -p ./bin
@@ -17,4 +21,4 @@ run: bootloader
 
 # Clear Binary
 clean:
-	rm -r ./bin
+	rm -rf ./bin/boot.bin
