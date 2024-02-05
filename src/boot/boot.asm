@@ -1,6 +1,10 @@
 ;   Set start address point
-ORG 0
+ORG 0x7C00
 BITS 16
+
+; offset segments
+CODE_SEG equ gdt_code - gdt_start
+DATA_SEG equ gdt_data - gdt_data
 
 ; Avoid BIOS overwitten stuff
 _start:
@@ -11,68 +15,68 @@ times 33 db 0
 
 ; Output to the screen (video services 'ah' register)
 start:
-  jmp 0x7C0:process
+  jmp 0:process
 
 process:
   cli ; Clear Interrupts
-  mov ax, 0x7BF
+  mov ax, 0x00
   mov ds, ax
   mov es, ax
-  mov ax, 0x00
   mov ss, ax
   mov sp, 0x7C00
-
   sti ; Enables Interrupts
 
-  ; READ SECTORS INTO MEMORY
-  ; message will be inserted into bin SECTOR
-  ; we will read this sector and save it into memory
-  mov ah, 2 ; Read sector command
-  mov al, 1 ; Sectors to read (1)
-  mov ch, 0 ; Cylilnder low 8 bits
-  mov cl, 2 ; Read sector 2
-  mov dh, 0 ; Head number
-  mov bx, buffer
-  int 0x13
-  jc error
+.load_protected:
+  cli
+  lgdt[gdt_descriptor]
+  mov eax, cr0
+  or eax, 0x1
+  mov cr0, eax
+  jmp CODE_SEG:load32
 
-  mov si, buffer
-  call print
+; GDT - Global Descriptor Table
+gdt_start:
+gdt_null:
+  dd 0x0
+  dd 0x0
 
+; offset 0x8
+gdt_code:      ; CS Should point to this
+  dw 0xffff    ; Segment limit first 0-15 bits
+  dw 0         ; Base first 0-15 bits
+  db 0         ; Base 16-32 bits
+  db 0x9a      ; Access byte
+  db 11001111b ; High 4 bit flags and the low 4 bit flags
+  db 0         ; Base 24-31 bits
+
+; offset 0x10
+gdt_data:      ; DS, SS, ES, FS, GS
+  dw 0xffff    ; Segment limit first 0-15 bits
+  dw 0         ; Base first 0-15 bits
+  db 0         ; Base 16-32 bits
+  db 0x92      ; Access byte
+  db 11001111b ; High 4 bit flags and the low 4 bit flags
+  db 0         ; Base 24-31 bits
+
+gdt_end:
+gdt_descriptor:
+  dw gdt_end - gdt_start-1
+  dd gdt_start
+
+[BITS 32]
+load32:
+  mov ax, DATA_SEG
+  mov ds, ax
+  mov es, ax
+  mov fs, ax
+  mov gs, ax
+  mov ss, ax
+  mov ebp, 0x00200000
+  mov esp, ebp
   jmp $
-
-error:
-  mov si, error_message
-  call print
-
-  jmp $
-
-print: 
-  mov bx, 0
-
-.loop:
-  lodsb ; Increments characters from 'ah' register to 'si'
-  cmp al, 0
-  je .done
-  call print_char
-  jmp .loop
-
-.done:
-  ret
-
-print_char:
-	mov ah, 0eh ; Display characters function ( 0eh )
-	int 0x10 ; Interrupt video services
-  ret
-
-  jmp $
-
-error_message: db 'Failed to load sector', 0
 
 ; Fill exceding bits with zeros (510 bytes in total)
 times 510-($ - $$) db 0
 
 ; Boot signature
 dw 0xAA55
-
-buffer: ; WILL BE READ FROM MEMORY SECTOR

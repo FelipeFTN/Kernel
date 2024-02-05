@@ -1,18 +1,24 @@
 .PHONY: all bootloader clean run
 
-all: bootloader
+binary_file := ./bin/boot.bin
+nasm_file := ./src/boot/boot.asm
 
-build:
-	mkdir -p ./bin
-	nasm -f bin ./src/boot/boot.asm -o ./bin/boot.bin
+all: build
 
-# Compile Bootloader
+build: $(binary_file)
+	dd if=./src/boot/message >> ./bin/boot.bin
+	dd if=/dev/zero bs=512 count=1 >> ./bin/boot.bin
+
+$(binary_file): $(nasm_file)
+	nasm -f bin $^ -o $@
+
+# Compile Bootloader - MyKernel
 bootloader:
 	mkdir -p ./bin
-	nasm -f bin ./boot.asm -o ./bin/boot.bin
+	nasm -f bin ./src/boot/myKernel.asm -o ./bin/boot.bin
 	
 	# Write message into boot sector
-	dd if=./message >> ./bin/boot.bin
+	dd if=./src/boot/message >> ./bin/boot.bin
 	dd if=/dev/zero bs=512 count=1 >> ./bin/boot.bin
 
 # Qemu System
