@@ -1,2 +1,7 @@
 # Compiled & Binary files
 bin/*.bin
+build/*.o
+
+**/*.asm.o
+**/*.bin
+**/*.o

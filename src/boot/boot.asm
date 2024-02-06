@@ -33,6 +33,7 @@ process:
   or eax, 0x1
   mov cr0, eax
   jmp CODE_SEG:load32
+  jmp $
 
 ; GDT - Global Descriptor Table
 gdt_start:
@@ -65,21 +66,66 @@ gdt_descriptor:
 
 [BITS 32]
 load32:
-  mov ax, DATA_SEG
-  mov ds, ax
-  mov es, ax
-  mov fs, ax
-  mov gs, ax
-  mov ss, ax
-  mov ebp, 0x00200000
-  mov esp, ebp
+  mov eax, 1
+  mov ecx, 100
+  mov edi, 0x0100000 ; 1 MB in hex
+  call ata_lba_read
+  jmp CODE_SEG:0x0100000
 
-  ; Enable the A20 line
-  in al, 0x92
-  or al, 2
-  out 0x92, al
+; Dummy little driver before writing a better one with C
+ata_lba_read:
+  mov ebx, eax ; Backup the LBA
 
-  jmp $
+  ; Send the highest 8 bits of the lba to hard disk controller
+  shr eax, 24 ; Shift eax register 24 bits to right
+  or eax, 0xE0 ; Selects the master drive
+  mov dx, 0x1F6
+
+  ; Send the total sectors to read
+  mov eax, ecx
+  mov dx, 0x1F2
+  out dx, al
+
+  ; Send more bits of the LBA
+  mov eax, ebx ; Restore the backup LBA
+  mov dx, 0x1F3
+  out dx, al
+
+  ; Send more bits  of the LBA
+  mov dx, 0x1F4
+  mov eax, ebx ; Restore the backup LBA
+  shr eax, 8
+  out dx, al
+
+  ; Send upper 16 bits of the LBA
+  mov dx, 0x1F5
+  mov eax, ebx ; Restore the backup LBA
+  shr eax, 16
+  out dx, al
+
+  mov dx, 0x1F7
+  mov al, 0x20
+  out dx, al
+
+; Read all sectors into memory
+.next_sector:
+  push ecx
+
+; Checking if we need to read - delay
+.try_again:
+  mov dx, 0x1F7
+  in al, dx
+  test al, 8
+  jz .try_again
+
+  ; We need to read 256 words at a time
+  mov ecx, 256 ; repeats 256 times - one sector
+  mov dx, 0x1F0
+  rep insw ; Read a word for the port 0x1F0
+  pop ecx
+  loop .next_sector
+  ; End of reading sectors into memory
+  ret
 
 ; Fill exceding bits with zeros (510 bytes in total)
 times 510-($ - $$) db 0
