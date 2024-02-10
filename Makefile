@@ -1,8 +1,13 @@
 .PHONY: all bootloader clean run
 
+includes := -I./src
+c_files := ./src/kernel.c
+c_objs := ./build/kernel.o
+flags := -g -ffreestanding -falign-jumps -falign-functions -falign-labels -falign-loops -fstrength-reduce -fomit-frame-pointer -finline-functions -Wno-unused-function -fno-builtin -Werror -Wno-unused-label -Wno-cpp -Wno-unused-parameter -nostdlib -nostartfiles -nodefaultlibs -Wall -O0 -Iinc
+
 linker_ld_file := ./src/linker.ld
 
-kernel_obj_file := ./build/kernel.asm.o
+kernel_obj_file := ./build/kernel.asm.o ./build/kernel.o
 kernel_file := ./src/kernel.asm
 kernel_binary := ./bin/kernel.bin
 
@@ -13,7 +18,7 @@ boot_file := ./src/boot/boot.asm
 
 all: build
 
-build: $(boot_binary) $(kernel_binary)
+build: $(boot_binary) $(kernel_binary) $(c_objs)
 	rm -rf ./bin/os.bin
 	dd if=./bin/boot.bin >> ./bin/os.bin
 	dd if=./bin/kernel.bin >> ./bin/os.bin
@@ -21,13 +26,16 @@ build: $(boot_binary) $(kernel_binary)
 
 $(kernel_binary): $(kernel_obj_file)
 	i686-elf-ld -g -relocatable $^ -o $(kernelfull_obj_file)
-	i686-elf-gcc -T $(linker_ld_file) -o $@ -ffreestanding -O0 -nostdlib $(kernelfull_obj_file)
+	i686-elf-gcc $(flags) -T $(linker_ld_file) -o $@ -ffreestanding -O0 -nostdlib $(kernelfull_obj_file)
 
 $(boot_binary): $(boot_file)
 	nasm -f bin $^ -o $@
 
 $(kernel_obj_file): $(kernel_file)
 	nasm -f elf -g $^ -o $@
+
+$(c_objs): $(c_files)
+	i686-elf-gcc $(includes) $(flags) -std=gnu99 -c $^ -o $@
 
 # Compile Bootloader - MyKernel
 bootloader:
