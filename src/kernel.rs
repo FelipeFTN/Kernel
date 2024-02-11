@@ -1,3 +1,8 @@
+#![no_main]
+#![no_std]
+
+use core::panic::PanicInfo;
+
 const VGA_WIDTH: usize = 80;
 const VGA_HEIGHT: usize = 25;
 
@@ -87,6 +92,6 @@ pub extern "C" fn kernel_main() {
 }
 
 #[panic_handler]
-fn panic(_info: &core::panic::PanicInfo) -> ! {
+fn panic(_info: &PanicInfo) -> ! {
     loop {}
 }
