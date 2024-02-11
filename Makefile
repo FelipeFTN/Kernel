@@ -37,18 +37,8 @@ $(kernel_obj_file): $(kernel_file)
 $(c_objs): $(c_files)
 	i686-elf-gcc $(includes) $(flags) -std=gnu99 -c $^ -o $@
 
-# Compile Bootloader - MyKernel
-bootloader:
-	mkdir -p ./bin
-	nasm -f bin ./src/boot/myKernel.asm -o ./bin/boot.bin
-	
-	# Write message into boot sector
-	dd if=./src/boot/message >> ./bin/boot.bin
-	dd if=/dev/zero bs=512 count=1 >> ./bin/boot.bin
-
-# Qemu System
-run: bootloader
-	qemu-system-x86_64 -hda ./bin/boot.bin
+run: clean build
+	qemu-system-x86_64 -hda ./bin/os.bin
 
 # Clear Binary
 clean:
